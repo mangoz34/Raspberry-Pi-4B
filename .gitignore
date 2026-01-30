@@ -1,0 +1,12 @@
+# 忽略執行檔
+a.out
+hellow
+prototype
+
+# 忽略實驗數據檔 (除非你想保留備份)
+*.dat
+*.png
+
+# 忽略 IDE 暫存檔
+.idea/
+.vscode/
