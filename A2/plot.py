@@ -3,8 +3,7 @@ import matplotlib.pyplot as plt
 
 def generate_final_plot():
     try:
-        # 1. 讀取數據
-        df = pd.read_csv('hardware_benchmark.txt', skiprows=1)
+        df = pd.read_csv('hardware_benchmark.txt', skiprows=2, header=None)
         df.columns = ['time', 'temp', 'freq', 'volt']
 
         if df['volt'].dtype == object:
