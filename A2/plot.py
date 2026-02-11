@@ -3,15 +3,23 @@ import matplotlib.pyplot as plt
 
 def generate_final_plot():
     try:
-        df = pd.read_csv('hardware_benchmark.txt', skiprows=2, header=None)
-        df.columns = ['time', 'temp', 'freq', 'volt']
+        df = pd.read_csv('hardware_benchmark.txt', sep=',', header=None, on_bad_lines='skip')
+        def clean_numeric(x):
+            if isinstance(x, str):
+                return x.replace('V', '').replace('(', '').replace(')', '')
+            return x
 
-        df['volt'] = df['volt'].astype(str).str.replace('V', '')
+        df = df.applymap(clean_numeric)
 
         for col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
-
         df = df.dropna().reset_index(drop=True)
+
+        df.columns = ['time', 'temp', 'freq', 'volt']
+
+        if df.empty:
+            print("Error: No numeric data found in the file. Check your hardware_benchmark.txt content.")
+            return
 
         fig, ax1 = plt.subplots(figsize=(12, 7))
 
