@@ -1,8 +1,10 @@
 CC = gcc
-CFLAGS = -Wall -O2 -g
-LDFLAGS = -lrt
+CFLAGS = -Wall -O2 -g -pthread
+LDFLAGS = -lrt -pthread
+
 TARGET = hardware_benchmark
 SRC = hardware_benchmark.c
+
 all: $(TARGET)
 
 $(TARGET): $(SRC)

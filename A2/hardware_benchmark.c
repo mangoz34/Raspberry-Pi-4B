@@ -1,13 +1,3 @@
-/**
- * @file hardware_benchmark.c
- * @brief Comprehensive Characterization and Stress Testing Tool for Raspberry Pi.
- * @details This tool automates the hardware exploration stage of Assignment 2[cite: 4, 14].
- * It extracts SoC data, probes Cache hierarchy (Q3) [cite: 133], scans USB devices (Q2)[cite: 132],
- * and performs a thermal stress test (Q27, Q28)[cite: 158, 159].
- * @author Jerry Chung
- * @date 2026-02-10
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +5,13 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <pthread.h>
+
+
+typedef struct {
+    int duration;
+    size_t buffer_size;
+} thread_args_t;
 
 /**
  * @brief Reads a single line from a system file (sysfs) and logs it. [cite: 162]
@@ -33,6 +30,32 @@ void log_sys_value(const char *path, const char *label, FILE *log_fp) {
         }
         fclose(fp);
     }
+}
+
+/**
+ * @brief Thread function that generates mixed CPU/Memory load.
+ */
+void* stress_worker(void* args) {
+    thread_args_t* t_args = (thread_args_t*)args;
+    size_t size = t_args->buffer_size;
+    uint32_t *src = malloc(size);
+    uint32_t *dst = malloc(size);
+
+    if (!src || !dst) return NULL;
+
+    time_t start = time(NULL);
+    volatile float dummy = 1.414f;
+
+    while (time(NULL) - start < t_args->duration) {
+        for (int i = 0; i < (int)(size / 4); i++) {
+            dst[i] = src[i];
+            // 更重的運算：加入除法與複合運算
+            dummy = (dummy / 1.000001f) + 0.00001f;
+        }
+    }
+
+    free(src); free(dst);
+    return NULL;
 }
 
 /**
@@ -171,48 +194,50 @@ void run_stress_benchmark(int duration_sec) {
     FILE *fp = fopen("hardware_benchmark.txt", "w");
     if (!fp) return;
 
-    fprintf(fp, "Stress Test Benchmark (Duration: %ds)\n", duration_sec);
-    fprintf(fp, "Time(s) | Temp(C) | CPU_Freq(MHz) | RAM_Freq(MHz) | Volts(V)\n");
-    fprintf(fp, "----------------------------------------------------------------------\n");
+    fprintf(fp, "Multi-threaded Stress Test (Duration: %ds)\n", duration_sec);
+    fprintf(fp, "Time(s) | Temp(C) | CPU_Freq(MHz) | Volts(V)\n");
+    fprintf(fp, "--------------------------------------------------\n");
 
-    size_t size = 10 * 1024 * 1024; // 10MB stress buffer
-    uint32_t *src = malloc(size);
-    uint32_t *dst = malloc(size);
+    // Get number of online CPU cores
+    int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
+    printf("Spawning %d threads for maximum stress...\n", num_cores);
 
+    pthread_t threads[num_cores];
+    thread_args_t t_args = {duration_sec, 10 * 1024 * 1024}; // 10MB per thread
+
+    // Start all worker threads
+    for (int i = 0; i < num_cores; i++) {
+        pthread_create(&threads[i], NULL, stress_worker, &t_args);
+    }
+
+    // Main thread monitors system telemetry every second
     time_t start = time(NULL);
     int elapsed = 0;
-
-    printf("\nStarting stress test. Sampling every second...\n");
-
-    while (elapsed <= duration_sec) {
-
-        // Intensive work loop: Copying memory to generate heat/stress
-        volatile float dummy = 1.414f;
-        for (int i = 0; i < (int)(size / 4); i++) {
-            dst[i] = src[i];
-            dummy = (dummy / 1.000001f) + 3.14159f;
-        }
-
+    while (elapsed < duration_sec) {
         time_t now = time(NULL);
         if ((int)(now - start) > elapsed) {
             elapsed = (int)(now - start);
-            char temp[32], cpu_f[32], ram_f[32], volt[32];
+            char temp[32], cpu_f[32], volt[32];
 
             get_vcgen_data("measure_temp", temp, 32);
             get_vcgen_data("measure_clock arm", cpu_f, 32);
-            get_vcgen_data("measure_clock sdram", ram_f, 32);
             get_vcgen_data("measure_volts core", volt, 32);
 
-            fprintf(fp, "%-7d | %-7s | %-13ld | %-13ld | %s\n",
-                    elapsed, temp, atol(cpu_f)/1000000, atol(ram_f)/1000000, volt);
+            fprintf(fp, "%-7d | %-7s | %-13ld | %s\n",
+                    elapsed, temp, atol(cpu_f)/1000000, volt);
             printf("Progress: %d/%ds | Temp: %s | CPU: %ldMHz\n",
                     elapsed, duration_sec, temp, atol(cpu_f)/1000000);
         }
+        usleep(100000); // 0.1s sleep to reduce monitoring overhead
     }
 
-    free(src); free(dst);
+    // Wait for all threads to complete
+    for (int i = 0; i < num_cores; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
     fclose(fp);
-    printf("[Success] Benchmark saved to hardware_benchmark.txt\n");
+    printf("[Success] Multi-threaded benchmark saved.\n");
 }
 
 /**
@@ -221,9 +246,9 @@ void run_stress_benchmark(int duration_sec) {
 int main() {
     printf("Starting Assignment 2: Professional Exploration Tool...\n");
 
-    int b_time = read_config_time();
+    int duration = read_config_time();
     generate_info_report();
-    run_stress_benchmark(b_time);
+    run_stress_benchmark(duration);
 
     printf("\n[Done] Please remember to use 'sudo halt' before unplugging.\n");
     return 0;
