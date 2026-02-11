@@ -1,1 +1,2 @@
-benchmark_time=60
+benchmark_time=300
+thread=4

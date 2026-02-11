@@ -63,20 +63,22 @@ void* stress_worker(void* args) {
  * @details Looks for "benchmark_time=" in config.txt. Defaults to 60s if not found.
  * @return int The duration in seconds.
  */
-int read_config_time() {
-    int time_val = 60;
+int read_config_int(const char *key, int default_val) {
+    int val = default_val;
     FILE *cf = fopen("config.txt", "r");
     if (cf) {
         char line[128];
+        size_t key_len = strlen(key);
         while (fgets(line, sizeof(line), cf)) {
-            if (strncmp(line, "benchmark_time=", 15) == 0) {
-                time_val = atoi(line + 15);
+            // 檢查 key= 格式
+            if (strncmp(line, key, key_len) == 0 && line[key_len] == '=') {
+                val = atoi(line + key_len + 1);
                 break;
             }
         }
         fclose(cf);
     }
-    return time_val;
+    return val;
 }
 
 /**
@@ -190,27 +192,22 @@ void generate_info_report() {
  * @param duration_sec How long the stress test should run.
  * @note Answers Assignment Questions 27 and 28. [cite: 159]
  */
-void run_stress_benchmark(int duration_sec) {
+void run_stress_benchmark(int duration_sec, int num_threads) {
     FILE *fp = fopen("hardware_benchmark.txt", "w");
     if (!fp) return;
 
-    fprintf(fp, "Multi-threaded Stress Test (Duration: %ds)\n", duration_sec);
-    fprintf(fp, "Time(s) | Temp(C) | CPU_Freq(MHz) | Volts(V)\n");
-    fprintf(fp, "--------------------------------------------------\n");
+    fprintf(fp, "Stress Test (Duration: %ds, Threads: %d)\n", duration_sec, num_threads);
+    fprintf(fp, "Time(s),Temp(C),CPU_Freq(MHz),Volts(V)\n");
 
-    // Get number of online CPU cores
-    int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
-    printf("Spawning %d threads for maximum stress...\n", num_cores);
+    printf("Starting stress test with %d threads for %d seconds...\n", num_threads, duration_sec);
 
-    pthread_t threads[num_cores];
-    thread_args_t t_args = {duration_sec, 10 * 1024 * 1024}; // 10MB per thread
+    pthread_t threads[num_threads];
+    thread_args_t t_args = {duration_sec, 10 * 1024 * 1024};
 
-    // Start all worker threads
-    for (int i = 0; i < num_cores; i++) {
+    for (int i = 0; i < num_threads; i++) {
         pthread_create(&threads[i], NULL, stress_worker, &t_args);
     }
 
-    // Main thread monitors system telemetry every second
     time_t start = time(NULL);
     int elapsed = 0;
     while (elapsed < duration_sec) {
@@ -218,37 +215,34 @@ void run_stress_benchmark(int duration_sec) {
         if ((int)(now - start) > elapsed) {
             elapsed = (int)(now - start);
             char temp[32], cpu_f[32], volt[32];
-
             get_vcgen_data("measure_temp", temp, 32);
             get_vcgen_data("measure_clock arm", cpu_f, 32);
             get_vcgen_data("measure_volts core", volt, 32);
 
-            fprintf(fp, "%-7d | %-7s | %-13ld | %s\n",
-                    elapsed, temp, atol(cpu_f)/1000000, volt);
-            printf("Progress: %d/%ds | Temp: %s | CPU: %ldMHz\n",
-                    elapsed, duration_sec, temp, atol(cpu_f)/1000000);
+            // 儲存為 CSV 格式
+            fprintf(fp, "%d,%s,%ld,%s\n", elapsed, temp, atol(cpu_f)/1000000, volt);
+            printf("Elapsed: %d/%ds | Temp: %s | CPU: %ldMHz\n", elapsed, duration_sec, temp, atol(cpu_f)/1000000);
         }
-        usleep(100000); // 0.1s sleep to reduce monitoring overhead
+        usleep(100000);
     }
 
-    // Wait for all threads to complete
-    for (int i = 0; i < num_cores; i++) {
-        pthread_join(threads[i], NULL);
-    }
-
+    for (int i = 0; i < num_threads; i++) pthread_join(threads[i], NULL);
     fclose(fp);
-    printf("[Success] Multi-threaded benchmark saved.\n");
 }
 
 /**
  * @brief Main entry point for the exploration tool.
  */
 int main() {
-    printf("Starting Assignment 2: Professional Exploration Tool...\n");
+    printf("Starting Benchmark Tool...\n");
 
-    int duration = read_config_time();
+    int b_time = read_config_int("benchmark_time", 60);
+    int num_threads = read_config_int("thread", 1);
+
+    printf("Configuration: Time=%ds, Threads=%d\n", b_time, num_threads);
+
     generate_info_report();
-    run_stress_benchmark(duration);
+    run_stress_benchmark(b_time, num_threads);
 
     printf("\n[Done] Please remember to use 'sudo halt' before unplugging.\n");
     return 0;
