@@ -15,7 +15,7 @@ def plot_comprehensive_benchmark():
 
         ax1.plot(time, temp, color='tab:red', linewidth=2, label='Temperature (°C)')
         ax1.set_ylabel('Temperature (°C)', color='tab:red')
-        ax1.set_title('UW ECE - Raspberry Pi System Characterization', fontsize=14)
+        ax1.set_title('Raspberry Pi System Benchmark', fontsize=14)
         ax1.grid(True, alpha=0.3)
 
         color_freq = 'tab:blue'
