@@ -190,7 +190,7 @@ void run_stress_benchmark(int duration_sec) {
         volatile float dummy = 1.414f;
         for (int i = 0; i < (int)(size / 4); i++) {
             dst[i] = src[i];
-            dummy = (dummy * 1.000001f) + 0.00001f;
+            dummy = (dummy / 1.000001f) + 3.14159f;
         }
 
         time_t now = time(NULL);
