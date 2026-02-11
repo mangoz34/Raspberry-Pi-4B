@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 def generate_final_plot():
     try:
         # 1. 讀取數據
-        df = pd.read_csv('hardware_benchmark.txt', skiprows=1, header=None)
+        df = pd.read_csv('hardware_benchmark.txt', skiprows=1)
         df.columns = ['time', 'temp', 'freq', 'volt']
 
         if df['volt'].dtype == object:
@@ -37,7 +37,7 @@ def generate_final_plot():
 
         plt.tight_layout()
         plt.savefig('comprehensive_benchmark_plot.png', bbox_inches='tight', dpi=300)
-        print("[Success] Final professional plot saved to comprehensive_benchmark_plot.png")
+        print("[Success] Image saved to comprehensive_benchmark_plot.png")
 
     except Exception as e:
         print(f"Error: {e}")
