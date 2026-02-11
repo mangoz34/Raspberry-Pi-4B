@@ -185,8 +185,13 @@ void run_stress_benchmark(int duration_sec) {
     printf("\nStarting stress test. Sampling every second...\n");
 
     while (elapsed <= duration_sec) {
+
         // Intensive work loop: Copying memory to generate heat/stress
-        for (int i = 0; i < (int)(size / 4); i++) dst[i] = src[i];
+        volatile float dummy = 1.414f;
+        for (int i = 0; i < (int)(size / 4); i++) {
+            dst[i] = src[i];
+            dummy = (dummy * 1.000001f) + 0.00001f;
+        }
 
         time_t now = time(NULL);
         if ((int)(now - start) > elapsed) {
