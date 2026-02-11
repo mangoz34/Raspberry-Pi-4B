@@ -1,42 +1,46 @@
-import matplotlib.pyplot as plt
 import pandas as pd
+import matplotlib.pyplot as plt
 
-def plot_comprehensive_benchmark():
+def generate_final_plot():
     try:
-        data = pd.read_csv('hardware_benchmark.txt', skiprows=1)
-        time = data.iloc[:, 0]
-        temp = data.iloc[:, 1]
+        # 1. 讀取數據
+        df = pd.read_csv('hardware_benchmark.txt', skiprows=1, header=None)
+        df.columns = ['time', 'temp', 'freq', 'volt']
 
-        freq_ghz = data.iloc[:, 2] / 1000.0
+        if df['volt'].dtype == object:
+            df['volt'] = df['volt'].str.replace('V', '').astype(float)
 
-        volt = data.iloc[:, 3].astype(str).str.replace('V', '').astype(float)
+        fig, ax1 = plt.subplots(figsize=(12, 7))
 
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10), sharex=True)
+        color_temp = 'tab:red'
+        ax1.set_xlabel('Time (s)', fontsize=12, fontweight='bold') # 加上 (s)
+        ax1.set_ylabel('Temperature ($^\circ$C)', color=color_temp, fontsize=12, fontweight='bold')
+        ax1.plot(df['time'], df['temp'], color=color_temp, linewidth=2.5, label='Temperature')
+        ax1.tick_params(axis='y', labelcolor=color_temp)
+        ax1.grid(True, linestyle='--', alpha=0.6)
 
-        ax1.plot(time, temp, color='tab:red', linewidth=2, label='Temperature (°C)')
-        ax1.set_ylabel('Temperature (°C)', color='tab:red')
-        ax1.set_title('UW ECE - Raspberry Pi System Characterization', fontsize=14)
-        ax1.grid(True, alpha=0.3)
+        ax1.set_ylim(df['temp'].min() - 5, df['temp'].max() + 15)
 
-        color_freq = 'tab:blue'
-        # 使用換算後的 freq_ghz
-        ax2.step(time, freq_ghz, color=color_freq, linewidth=2, label='CPU Frequency (GHz)', where='post')
-        ax2.set_ylabel('Frequency (GHz)', color=color_freq)
-        ax2.tick_params(axis='y', labelcolor=color_freq)
-        ax2.set_ylim(0.5, 1.8)
+        ax2 = ax1.twinx()
+        color_volt = 'tab:blue'
+        ax2.set_ylabel('Core Voltage (V)', color=color_volt, fontsize=12, fontweight='bold')
+        ax2.plot(df['time'], df['volt'], color=color_volt, linewidth=2, linestyle='--', label='Voltage')
+        ax2.tick_params(axis='y', labelcolor=color_volt)
 
-        ax3 = ax2.twinx()
-        color_volt = 'tab:green'
-        ax3.plot(time, volt, color=color_volt, linewidth=2, linestyle='--', label='Core Voltage (V)')
-        ax3.set_ylabel('Voltage (V)', color=color_volt)
-        ax3.tick_params(axis='y', labelcolor=color_volt)
+        ax2.set_ylim(1.0, 3.0)
 
-        fig.tight_layout()
-        plt.savefig('comprehensive_benchmark_plot.png')
-        print("[Success] Plot generated with GHz units using Python scaling!")
+        plt.title('Raspberry Pi 4B: Thermal and Voltage Characterization', fontsize=14, pad=20, fontweight='bold')
+
+        lines1, labels1 = ax1.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left', frameon=True, shadow=True)
+
+        plt.tight_layout()
+        plt.savefig('comprehensive_benchmark_plot.png', bbox_inches='tight', dpi=300)
+        print("[Success] Final professional plot saved to comprehensive_benchmark_plot.png")
 
     except Exception as e:
-        print(f"[Error]: {e}")
+        print(f"Error: {e}")
 
 if __name__ == "__main__":
-    plot_comprehensive_benchmark()
+    generate_final_plot()
