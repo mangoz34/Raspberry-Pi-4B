@@ -8,6 +8,10 @@
 #include <pthread.h>
 
 
+#define L1_SIZE_TEST (16 * 1024)         // 16KB
+#define L2_SIZE_TEST (512 * 1024)        // 512KB
+#define MEM_SIZE_TEST (64 * 1024 * 1024) // 64MB
+
 typedef struct {
     int duration;
     size_t buffer_size;
@@ -156,6 +160,49 @@ void scan_usb_devices(FILE *log_fp) {
 }
 
 /**
+ * @brief Helper function to measure memory bandwidth.
+ */
+double measure_bandwidth(size_t size, int iterations) {
+    char *src = malloc(size);
+    char *dst = malloc(size);
+    if (!src || !dst) return 0;
+    memset(src, 'A', size);
+
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
+    for (int i = 0; i < iterations; i++) {
+        memcpy(dst, src, size);
+    }
+
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double time_spent = (end.tv_sec - start.tv_sec) +
+                        (end.tv_nsec - start.tv_nsec) / 1000000000.0;
+
+    double total_data_gb = (double)size * iterations / (1024.0 * 1024.0 * 1024.0);
+    free(src); free(dst);
+    return total_data_gb / time_spent;
+}
+
+/**
+ * @brief Part B: Memory Hierarchy Benchmark
+ */
+void run_memory_hierarchy_benchmark(FILE *log_fp) {
+    fprintf(log_fp, "\n[Part B: Memory Hierarchy Performance]\n");
+    printf("\nRunning Memory Hierarchy Benchmark...\n");
+
+    double l1_bw = measure_bandwidth(L1_SIZE_TEST, 100000);
+    double l2_bw = measure_bandwidth(L2_SIZE_TEST, 5000);
+    double mem_bw = measure_bandwidth(MEM_SIZE_TEST, 100);
+
+    fprintf(log_fp, "L1 Cache Bandwidth (16KB)  : %.2f GB/s\n", l1_bw);
+    fprintf(log_fp, "L2 Cache Bandwidth (512KB) : %.2f GB/s\n", l2_bw);
+    fprintf(log_fp, "Main Memory Bandwidth (64MB): %.2f GB/s\n", mem_bw);
+
+    printf("L1: %.2f GB/s | L2: %.2f GB/s | MEM: %.2f GB/s\n", l1_bw, l2_bw, mem_bw);
+}
+
+/**
  * @brief Generates a static report of the SoC and Memory specifications. [cite: 131, 137]
  * @note Answers Assignment Questions 1, 2, 3, and 7. [cite: 169]
  */
@@ -182,6 +229,8 @@ void generate_info_report() {
 
     probe_cache_info(fp);
     scan_usb_devices(fp);
+    run_memory_hierarchy_benchmark(fp);
+
     fclose(fp);
     printf("\n[Success] Static info saved to hardware_info.txt\n");
 }
