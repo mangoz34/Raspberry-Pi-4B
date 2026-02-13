@@ -163,19 +163,29 @@ void scan_usb_devices(FILE *log_fp) {
  * @brief Helper function to measure memory bandwidth.
  */
 double measure_bandwidth(size_t size, int iterations) {
-    char *src = malloc(size);
-    char *dst = malloc(size);
+    // 使用 volatile 指針，告訴編譯器這塊記憶體隨時會變，不要優化它
+    uint8_t *src = (uint8_t *)malloc(size);
+    uint8_t *dst = (uint8_t *)malloc(size);
     if (!src || !dst) return 0;
-    memset(src, 'A', size);
+
+    memset(src, 0xAA, size);
+    memset(dst, 0xBB, size);
 
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
 
     for (int i = 0; i < iterations; i++) {
         memcpy(dst, src, size);
+        // --- 核心修正：加入組合語言屏障 ---
+        // 這行程式碼沒有實際動作，但會強迫編譯器認為 dst 已經被改變了
+        __asm__ volatile("" : : "r"(dst) : "memory");
     }
 
     clock_gettime(CLOCK_MONOTONIC, &end);
+
+    // 額外保險：印出一個字元確保 dst 真的被讀取過
+    if (dst[0] == 0) printf(" ");
+
     double time_spent = (end.tv_sec - start.tv_sec) +
                         (end.tv_nsec - start.tv_nsec) / 1000000000.0;
 
