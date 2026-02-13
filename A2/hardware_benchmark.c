@@ -185,7 +185,7 @@ double measure_bandwidth(size_t size, int iterations) {
 }
 
 /**
- * @brief Part B: Memory Hierarchy Benchmark
+ * @brief Memory Hierarchy Benchmark
  */
 void run_memory_hierarchy_benchmark(FILE *log_fp) {
     fprintf(log_fp, "\n[Part B: Memory Hierarchy Performance]\n");
