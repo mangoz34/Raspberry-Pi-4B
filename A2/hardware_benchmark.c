@@ -53,7 +53,6 @@ void* stress_worker(void* args) {
     while (time(NULL) - start < t_args->duration) {
         for (int i = 0; i < (int)(size / 4); i++) {
             dst[i] = src[i];
-            // 更重的運算：加入除法與複合運算
             dummy = (dummy / 1.000001f) + 0.00001f;
         }
     }
@@ -74,7 +73,6 @@ int read_config_int(const char *key, int default_val) {
         char line[128];
         size_t key_len = strlen(key);
         while (fgets(line, sizeof(line), cf)) {
-            // 檢查 key= 格式
             if (strncmp(line, key, key_len) == 0 && line[key_len] == '=') {
                 val = atoi(line + key_len + 1);
                 break;
@@ -163,7 +161,6 @@ void scan_usb_devices(FILE *log_fp) {
  * @brief Helper function to measure memory bandwidth.
  */
 double measure_bandwidth(size_t size, int iterations) {
-    // 使用 volatile 指針，告訴編譯器這塊記憶體隨時會變，不要優化它
     uint8_t *src = (uint8_t *)malloc(size);
     uint8_t *dst = (uint8_t *)malloc(size);
     if (!src || !dst) return 0;
@@ -176,14 +173,11 @@ double measure_bandwidth(size_t size, int iterations) {
 
     for (int i = 0; i < iterations; i++) {
         memcpy(dst, src, size);
-        // --- 核心修正：加入組合語言屏障 ---
-        // 這行程式碼沒有實際動作，但會強迫編譯器認為 dst 已經被改變了
         __asm__ volatile("" : : "r"(dst) : "memory");
     }
 
     clock_gettime(CLOCK_MONOTONIC, &end);
 
-    // 額外保險：印出一個字元確保 dst 真的被讀取過
     if (dst[0] == 0) printf(" ");
 
     double time_spent = (end.tv_sec - start.tv_sec) +
