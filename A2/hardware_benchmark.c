@@ -272,7 +272,6 @@ void run_stress_benchmark(int duration_sec, int num_threads) {
             get_vcgen_data("measure_clock arm", cpu_f, 32);
             get_vcgen_data("measure_volts core", volt, 32);
 
-            // 儲存為 CSV 格式
             fprintf(fp, "%d,%s,%ld,%s\n", elapsed, temp, atol(cpu_f)/1000000, volt);
             printf("Elapsed: %d/%ds | Temp: %s | CPU: %ldMHz\n", elapsed, duration_sec, temp, atol(cpu_f)/1000000);
         }
